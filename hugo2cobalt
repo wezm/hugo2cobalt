@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+
+require 'yaml'
+require 'tomlrb' # tomlrb gem
+require 'pathname'
+require 'time'
+
+if ARGV.size < 2
+  $stderr.puts "Usage hugo2cobalt /path/to/hugo/posts /path/to/cobalt/posts"
+  exit 1
+end
+
+hugodir = Pathname(ARGV[0])
+cobaltdir = Pathname(ARGV[1])
+
+hugodir.each_child do |hugo_post|
+  next unless hugo_post.extname == '.md'
+
+  post = hugo_post.read
+
+  _, frontmatter, content = post.split('+++')
+  toml_matter = Tomlrb.parse frontmatter
+
+  # Convert dates
+  date = Time.parse toml_matter['date']
+  toml_matter['date'] = date.strftime('%d %b %Y %H:%M:%S %z')
+
+  puts hugo_post.basename
+  cobaltdir.join(hugo_post.basename).open('w') do |f|
+    f.write YAML.dump(toml_matter)
+    f.puts '---'
+    f.write content
+  end
+end
